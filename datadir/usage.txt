@@ -1,0 +1,2 @@
+Drop data files (videos) to this directory from host for host-container data
+sharing.
