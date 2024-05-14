@@ -1,4 +1,4 @@
-# Automate Insta360 360-degree video processing
+# Insta360 360-degree video processing in command-line
 
 This repository contains the utility and instructions to process Insta360
 360-degree videos (with extension `.insv`) from the command line,
@@ -41,3 +41,32 @@ editing software).
    ```bash
    docker run -v "$(pwd)/datadir":/root -it ubuntu:insta360
    ```
+
+   Copy/move `.insv` files to "$(pwd)/datadir" on host, for processing in the
+   container.
+
+5. Inside the Docker container, in shell prompt
+
+   ```bash
+   MERGED_VIDEO="merged.mp4"
+   MERGED_VIDEO_360="merged360.mp4"
+   # Convert to MP4, for 4K and lower resolution videos
+   for i in *.insv; do \
+     MediaSDKTest -inputs "$i" -output "${i}.mp4" \
+     -enable_directionlock -enable_flowstate -enable_denoise
+   done
+   # Join MP4 files into one (assuming file names are sorted in time order)
+   ls *.mp4 > list.txt
+   sed -i.bak 's/^/file /g' list.txt
+   ffmpeg -safe 0 -f concat -i list.txt -vcodec copy -acodec copy "$MERGED_VIDEO"
+   # Inject metadata (RDF/XML GSpherical tags)
+   exiftool -XMP-GSpherical:Spherical="true" \
+    -XMP-GSpherical:Stitched="true" \
+    -XMP-GSpherical:ProjectionType="equirectangular" \
+    -XMP-GSpherical:StereoMode="mono" "$MERGED_VIDEO" \
+    -o "$MERGED_VIDEO_360"
+   ```
+
+   "$MERGED_VIDEO_360" is the merged 360-degree video that can be viewed in [VLC
+   media player](https://www.videolan.org/) or uploaded to YouTube as a 360
+   video.
