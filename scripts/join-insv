@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+#
+# Join 360-degree INSV files into a single MP4
+#
+
+set -euo pipefail
+
+#######################################################
+# Self test
+#######################################################
+err() {
+  echo -e "$*"
+  exit 1
+}
+
+self_test() {
+  echo "TODO"
+}
+
+join_insv() {
+
+  if [ "$#" -lt 3 ]; then
+    echo "Usage: ${FUNCNAME[0]} is_57k outfile infile1 [infile2 ...]"
+    exit 1
+  fi
+
+  local is_57k=$1
+  local outfile="$2"
+  shift 2
+
+  local tmpfile="${outfile}.tmp"
+  local file_list
+  file_list="$(mktemp)"
+
+  if ${is_57k}; then
+    echo "Not implemented"
+    exit 0
+  else
+    for v in "$@"; do
+      MediaSDKTest -inputs "$v" -output "${v}.mp4" \
+        -enable_directionlock -enable_flowstate -enable_denoise
+      echo "file ${v}.mp4" >> list.txt
+    done
+  fi
+
+  ffmpeg -safe 0 \
+    -f concat \
+    -i "${file_list}" \
+    -vcodec copy \
+    -acodec copy \
+    -f mp4 "$tmpfile"
+
+  exiftool -XMP-GSpherical:Spherical="true" \
+    -XMP-GSpherical:Stitched="true" \
+    -XMP-GSpherical:ProjectionType="equirectangular" \
+    -XMP-GSpherical:StereoMode="mono" \
+    -api largefilesupport=1 \
+    "$tmpfile" \
+    -o "$outfile"
+}
+
+usage() {
+>&2 cat << EOF
+Usage: ${0}
+    [ -H | --is_57k ]
+    [ -o | --output outfile ]
+    [ -h | --help ]
+    <infile> [infiles]
+EOF
+}
+
+############################
+# CLI entrypoint
+############################
+cli() {
+  local is_57k=false
+  local outfile=''
+
+  args=$(getopt -a -o Ho:h --long is_57k,output:,help -- "$@")
+
+  eval set -- "${args}"
+
+  while :
+  do
+    case "$1" in
+      -H | --is_57k) is_57k=true ; shift ;;
+      -h | --help) usage ; exit 0 ;;
+      -o | --output) outfile="$2" ; shift 2 ;;
+      --) shift; break ;;
+      *) >&2 echo "Unsupported optoin: $1"
+         usage ; exit 1 ;;
+    esac
+  done
+
+  [ -z "$outfile" ] && err "Error: [-o | --output] outfile is missing"
+
+  [[ $# -eq 0 ]] && { usage; exit 1; }
+
+  join_insv ${is_57k} "$outfile" "$@"
+
+}
+
+
+self_test
+cli "$@"

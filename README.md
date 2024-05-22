@@ -39,7 +39,7 @@ editing software).
    `/root/`, for host-container data sharing.
 
    ```bash
-   docker run -v "$(pwd)/datadir":/root -it ubuntu:insta360
+   docker run -v "$(pwd)/datadir":/root/datadir -it ubuntu:insta360
    ```
 
    Copy/move `.insv` files to "$(pwd)/datadir" on host, for processing in the
@@ -50,6 +50,10 @@ editing software).
    ```bash
    MERGED_VIDEO="merged.mp4"
    MERGED_VIDEO_360="merged360.mp4"
+
+   # Change to the host-mapped data directory in container
+   cd datadir/
+
    # Convert to MP4, for 4K and lower resolution videos
    for i in *.insv; do \
      MediaSDKTest -inputs "$i" -output "${i}.mp4" \
@@ -63,10 +67,33 @@ editing software).
    exiftool -XMP-GSpherical:Spherical="true" \
     -XMP-GSpherical:Stitched="true" \
     -XMP-GSpherical:ProjectionType="equirectangular" \
-    -XMP-GSpherical:StereoMode="mono" "$MERGED_VIDEO" \
+    -XMP-GSpherical:StereoMode="mono" \
+    -api largefilesupport=1 \
+    "$MERGED_VIDEO" \
     -o "$MERGED_VIDEO_360"
    ```
 
    "$MERGED_VIDEO_360" is the merged 360-degree video that can be viewed in [VLC
    media player](https://www.videolan.org/) or uploaded to YouTube as a 360
    video.
+
+## Utility: `join-insv`
+
+The utility `join-insv` is available in the container to automate the above
+workflow. Example
+
+```bash
+# For 4K and lower resolution
+join-insv --output /path/to/merged_360video.mp4 \
+  /path/to/input-1. insv /path/to/input-2.insv ...
+```
+
+The synopsis of `join-insv` is as follows.
+
+```bash
+Usage: join-insv
+    [ -H | --is_57k ]
+    [ -o | --output outfile ]
+    [ -h | --help ]
+    <infile> [infiles]
+```
