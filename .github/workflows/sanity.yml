@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euxo pipefail
           # Run the container with a volume mount, executing the fake debian package
-          docker run -v "$(pwd)/datadir":/root -it ubuntu:insta360 'hello'
+          docker run -v "$(pwd)/datadir":/root ubuntu:insta360 'hello'
 
   shellcheck:
     runs-on: 'ubuntu-latest'
