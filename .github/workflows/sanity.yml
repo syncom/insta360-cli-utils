@@ -1,0 +1,43 @@
+name: "Sanity checks"
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  build-docker-image:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout code'
+        uses: 'actions/checkout@v4'
+      - name: 'Build Docker image'
+        run: |
+          set -euxo pipefail
+          # Use a fake debian package for media SDK
+          docker build --tag ubuntu:insta360 --build-arg="MEDIASDK_UBUNTU_DEB=hello_2.10-3_amd64.deb" .
+      - name: 'Run Docker container'
+        run: |
+          set -euxo pipefail
+          # Run the container with a volume mount, executing the fake debian package
+          docker run -v "$(pwd)/datadir":/root ubuntu:insta360 'hello'
+
+  shellcheck:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: 'Checkout code'
+        uses: 'actions/checkout@v4'
+      - name: 'Install shellcheck'
+        run: |
+          set -euxo pipefail
+          sudo apt-get install shellcheck
+      - name: 'Run shellcheck'
+        run: |
+          set -euxo pipefail
+          cd ${{ github.workspace }}/
+          for f in $(find scripts/ -type f); do
+            if file "$f" | grep "shell script" &>/dev/null; then
+              shellcheck "$f"
+            fi
+          done

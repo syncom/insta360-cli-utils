@@ -28,10 +28,11 @@ join_insv() {
   local outfile="$2"
   shift 2
 
-  local tmpfile="${outfile}.tmp"
+  local tmpfile="_tmp.${outfile}"
   local file_list
-  file_list="$(mktemp)"
+  file_list="_list.txt"
 
+  rm -rf "${file_list}" "${tmpfile}"
   if ${is_57k}; then
     echo "Not implemented"
     exit 0
@@ -39,7 +40,7 @@ join_insv() {
     for v in "$@"; do
       MediaSDKTest -inputs "$v" -output "${v}.mp4" \
         -enable_directionlock -enable_flowstate -enable_denoise
-      echo "file ${v}.mp4" >> list.txt
+      echo "file ${v}.mp4" >> "${file_list}"
     done
   fi
 
