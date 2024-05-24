@@ -3,7 +3,7 @@
 # Join 360-degree INSV files into a single MP4
 #
 
-set -euo pipefail
+set -euxo pipefail
 
 #######################################################
 # Self test
@@ -33,9 +33,21 @@ join_insv() {
   file_list="_list.txt"
 
   rm -rf "${file_list}" "${tmpfile}"
+
   if ${is_57k}; then
-    echo "Not implemented"
-    exit 0
+    if [ $(( $# % 2 )) -ne 0 ]; then
+      err "Error: 5.7K mode requires even number of files"
+    fi
+
+    while [ $# -gt 0 ]; do
+      local left_eye="$1"
+      local right_eye="$2"
+      shift 2
+
+      MediaSDKTest -inputs "$left_eye" "$right_eye" -output "${left_eye}.mp4" \
+        -enable_directionlock -enable_flowstate -enable_denoise
+      echo "file ${left_eye}.mp4" >> "${file_list}"
+    done
   else
     for v in "$@"; do
       MediaSDKTest -inputs "$v" -output "${v}.mp4" \
