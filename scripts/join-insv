@@ -9,12 +9,33 @@ set -euxo pipefail
 # Self test
 #######################################################
 err() {
-  echo -e "$*"
+  echo -e "$*" >&2
   exit 1
 }
 
 self_test() {
-  echo "TODO"
+  # check if MediaSDKTest is available
+  command -v MediaSDKTest >/dev/null || \
+    err "Error: MediaSDKTest is not available"
+
+  # check if ffmpeg is available
+  command -v ffmpeg >/dev/null || \
+    err "Error: ffmpeg is not available"
+
+  # check if exiftool is available
+  command -v exiftool >/dev/null || \
+    err "Error: exiftool is not available"
+
+  # check if bc is available
+  command -v bc >/dev/null || \
+    err "Error: bc is not available"
+
+  # check if exiftool version is 12.40 or later
+  exiftool_ver="$(exiftool -ver | cut -d. -f1,2)"
+  if [ "$(echo "${exiftool_ver} >= 12.40" | bc)" -eq 0 ]; then
+    err "Error: exiftool version 12.40 or later is required"
+  fi
+
 }
 
 join_insv() {
