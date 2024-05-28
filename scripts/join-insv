@@ -3,7 +3,7 @@
 # Join 360-degree INSV files into a single MP4
 #
 
-set -euxo pipefail
+set -euo pipefail
 
 #######################################################
 # Self test
@@ -44,6 +44,8 @@ join_insv() {
     echo "Usage: ${FUNCNAME[0]} is_57k outfile infile1 [infile2 ...]"
     exit 1
   fi
+
+  self_test
 
   local is_57k=$1
   local outfile="$2"
@@ -134,6 +136,4 @@ cli() {
 
 }
 
-
-self_test
 cli "$@"
