@@ -51,7 +51,7 @@ join_insv() {
   local outfile="$2"
   shift 2
 
-  local tmpfile="_tmp.${outfile}"
+  local tmpfile="${outfile}"_tmp_.mp4
   local file_list
   file_list="_list.txt"
 
