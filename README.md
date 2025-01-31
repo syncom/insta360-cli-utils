@@ -1,10 +1,13 @@
 # Insta360 360-degree video processing in command-line
 
-This repository contains the utility and instructions to process Insta360
-360-degree videos (with extension `.insv`) from the command line,
+This repository contains the utility and instructions to process
+Insta360 360-degree videos (with extension `.insv`) from the command line,
 without using the [Insta360
 Studio](https://www.insta360.com/download/insta360-x3) (Insta360's desktop
 editing software).
+
+If you are a Linux user, this utility can come in handy, because as of early
+2025, Insta360 Studio has not shipped a Linux version.  
 
 ## Prerequisites
 
