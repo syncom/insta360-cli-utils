@@ -1,7 +1,7 @@
 # For exiftool 12.40
 FROM ubuntu:22.04
 
-ARG MEDIASDK_UBUNTU_DEB=libMediaSDK-dev_2.0-6_amd64_ubuntu18.04.deb
+ARG MEDIASDK_UBUNTU_DEB=libMediaSDK-dev-3.0.1.2-20250418_153137-amd64.deb
 ENV PATH="${PATH}:/root/scripts"
 
 RUN apt update && apt install software-properties-common -y && \
