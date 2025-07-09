@@ -53,7 +53,7 @@ join_insv() {
 
   local tmpfile="${outfile}"_tmp_.mp4
   local file_list
-  file_list="_list.txt"
+  file_list="$(mktemp --suffix="_list.txt" --tmpdir="$(pwd)")"
 
   rm -rf "${file_list}" "${tmpfile}"
 
