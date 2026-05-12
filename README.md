@@ -18,7 +18,11 @@ If you are a Linux user, this utility can come in handy, because as of early
   and download the Insta360 media SDK for Linux
   - The latest media SDK I have access to is `LinuxSDK20241128.zip`. It contains
     a pre-built package `libMediaSDK-dev_2.0-6_amd64_ubuntu18.04.deb` for Ubuntu
-    18.04, which is the only file I need from the zip
+    18.04, which is the only file I need from the zip.
+  - According to [Insta360's
+    note](https://github.com/Insta360Develop/Desktop-MediaSDK-Cpp/blob/cb70fdf197ac55473e876a010f297192e6e20e3e/README.md?plain=1#L3),
+    GPU is required in version 3.x.x. For better portability, we suggest that
+    you use an earlier version of the media SDK.
 
 ## My workflow for converting and joining 360-degree videos
 
