@@ -135,6 +135,15 @@ If you are a Linux user, this utility can come in handy, because as of early
      -enable_directionlock -enable_flowstate -enable_denoise
    ```
 
+6. Clean up `datadir/`
+
+   After processing is complete and you have copied the files you need out of
+   `datadir/`, you can remove its contents from the repository root with:
+
+   ```bash
+   git clean -df datadir/
+   ```
+
 ## Utility: `join-insv`
 
 The utility `join-insv` is available in the container to automate the above
