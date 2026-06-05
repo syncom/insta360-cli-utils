@@ -1,15 +1,15 @@
-# For exiftool 12.40
-FROM ubuntu:22.04
+# From repo root directory, build Docker image with command:
+#   docker build --tag ubuntu:insta360 [--build-arg="MEDIASDK_UBUNTU_DEB=<deb_file>"] .
+# Need exiftool 12.40 or above
+FROM ubuntu:24.04
 
-ARG MEDIASDK_UBUNTU_DEB=libMediaSDK-dev-3.1.1.0-20250922_191110-amd64.deb
+ARG MEDIASDK_UBUNTU_DEB=libMediaSDK-dev_2.0-6_amd64_ubuntu18.04.deb
 ENV PATH="${PATH}:/root/scripts"
-
-RUN apt update && \
-    apt install -y software-properties-common && \
-    apt install -y curl git build-essential libjpeg-dev libtiff-dev ffmpeg exiftool bc libvulkan1 libvulkan-dev vulkan-tools libglfw3-dev libdc1394-dev mesa-utils && \
-    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root
 COPY ${MEDIASDK_UBUNTU_DEB} .
-RUN dpkg -i ${MEDIASDK_UBUNTU_DEB}
+RUN apt update && \
+    apt install exiftool ffmpeg bc -y
+RUN apt install "./${MEDIASDK_UBUNTU_DEB}" -y
+
 COPY scripts scripts

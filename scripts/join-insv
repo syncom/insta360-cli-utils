@@ -86,6 +86,9 @@ join_insv() {
     -acodec copy \
     -f mp4 "$tmpfile"
 
+  # Remove output file if it already exists, otherwise exiftool will fail
+  rm -rf "${outfile}"
+
   exiftool -XMP-GSpherical:Spherical="true" \
     -XMP-GSpherical:Stitched="true" \
     -XMP-GSpherical:ProjectionType="equirectangular" \
