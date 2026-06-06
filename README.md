@@ -1,4 +1,4 @@
-# Insta360 360-degree video processing in command-line
+# Insta360 360-degree video processing from the command line
 
 This repository contains the utility and instructions to process
 Insta360 360-degree videos (with extension `.insv`) from the command line,
@@ -7,13 +7,12 @@ Studio](https://www.insta360.com/download/insta360-x3) (Insta360's desktop
 editing software).
 
 If you are a Linux user, this utility can come in handy, because as of early
-2025, Insta360 Studio has not shipped a Linux version.  
+2025, Insta360 Studio has not shipped a Linux version.
 
 ## Prerequisites
 
 - A machine that runs Docker
-- Enough free space on your local file system to store original and processed
-  video files
+- Enough free disk space to store original and processed video files
 - [Fill out the application](https://www.insta360.com/sdk/home), get approved,
   and download the Insta360 media SDK for Linux
   - The latest media SDK I have access to is `LinuxSDK20241128.zip`. It contains
@@ -21,38 +20,75 @@ If you are a Linux user, this utility can come in handy, because as of early
     18.04, which is the only file I need from the zip.
   - According to [Insta360's
     note](https://github.com/Insta360Develop/Desktop-MediaSDK-Cpp/blob/cb70fdf197ac55473e876a010f297192e6e20e3e/README.md?plain=1#L3),
-    GPU is required in version 3.x.x. For better portability, we suggest that
-    you use an earlier version of the media SDK.
+    GPU is required in version 3.x.x. If your computer doesn't have an NVIDIA
+    GPU, we suggest that you use an earlier version of the media SDK.
 
 ## My workflow for converting and joining 360-degree videos
 
-1. Clone this repo.
+1. Clone this repository.
 
    ```bash
    git clone https://github.com/syncom/insta360-cli-utils.git
    ```
 
-2. Extract the aforementioned `.deb` file from the media SDK zip, and put it
-   under the directory root of the just cloned repository.
+2. Extract the aforementioned `.deb` file from the media SDK zip, and place it
+   in the root directory of the cloned repository.
 
-3. Build the Docker container image in which the SDK is installed.
-
-   ```bash
-   # Under repo's directory root
-   docker build --tag ubuntu:insta360 .
-   ```
-
-4. Run the container, mounting host directory `datadir/` to the container's path
-   `/root/`, for host-container data sharing.
+3. Build the Docker container image in which the SDK is installed. Suppose the
+   file's name is `libMediaSDK-dev_2.0-6_amd64_ubuntu18.04.deb`.
 
    ```bash
-   docker run -v "$(pwd)/datadir":/root/datadir -it ubuntu:insta360
+   # From the repository root
+   docker build --tag ubuntu:insta360 \
+     --build-arg="MEDIASDK_UBUNTU_DEB=libMediaSDK-dev_2.0-6_amd64_ubuntu18.04.deb" .
    ```
 
-   Copy/move `.insv` files to "$(pwd)/datadir" on host, for processing in the
+4. Run the container, mounting the host directory `datadir/` to the container
+   path `/root/datadir`, for host-container data sharing.
+
+   <details>
+   <summary>If you don't have an NVIDIA GPU</summary>
+
+   As mentioned above, you need to use a media SDK whose version is below
+   `3.0.0`. In this case, you can perform video processing using the CPU.
+
+   ```bash
+   docker run -v "$(pwd)/datadir":/root/datadir --rm -it ubuntu:insta360
+   ```
+   </details>
+
+   <details>
+   <summary>If you have an NVIDIA GPU</summary>
+
+   You can use the GPU for video processing (tested on a PC with NVIDIA GeForce
+   RTX™ 4060 Ti running Ubuntu).
+
+   Before running the Docker container with CUDA support, perform the following prerequisite steps:
+
+   1. Install the [NVIDIA Container
+      Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+   2. Configure Docker so that it can use the NVIDIA Container Runtime
+
+      ```bash
+      sudo nvidia-ctk runtime configure --runtime=docker
+      # restart the Docker daemon
+      sudo systemctl restart docker
+      ```
+
+   The above steps only need to be done once on the host PC. Now you can run the
+   CUDA container.
+
+   ```bash
+   docker run --runtime=nvidia --gpus all \
+     -v "$(pwd)/datadir":/root/datadir \
+     --rm -it ubuntu:insta360
+   ```
+   </details>
+
+   Copy or move `.insv` files into `datadir/` on the host for processing in the
    container.
 
-5. Inside the Docker container, in shell prompt
+5. Inside the Docker container, at the shell prompt:
 
    ```bash
    MERGED_VIDEO="merged.mp4"
@@ -66,7 +102,7 @@ If you are a Linux user, this utility can come in handy, because as of early
      MediaSDKTest -inputs "$i" -output "${i}.mp4" \
      -enable_directionlock -enable_flowstate -enable_denoise
    done
-   # Join MP4 files into one (assuming file names are sorted in time order)
+   # Join MP4 files into one (assuming filenames are sorted in chronological order)
    ls *.mp4 > list.txt
    sed -i.bak 's/^/file /g' list.txt
    ffmpeg -safe 0 -f concat -i list.txt -vcodec copy -acodec copy "$MERGED_VIDEO"
@@ -80,15 +116,15 @@ If you are a Linux user, this utility can come in handy, because as of early
     -o "$MERGED_VIDEO_360"
    ```
 
-   "$MERGED_VIDEO_360" is the merged 360-degree video that can be viewed in [VLC
-   media player](https://www.videolan.org/) or uploaded to YouTube as a 360
+   `"$MERGED_VIDEO_360"` is the merged 360-degree video that can be viewed in
+   [VLC media player](https://www.videolan.org/) or uploaded to YouTube as a 360
    video.
 
    For 5.7K videos, separate video files like
    `/path/to/VID_20240528_113402_00_032.insv` and
    `/path/to/VID_20240528_113402_10_032.insv` are generated by the camera for
    the left-eye and right-eye views. Both files need to be supplied to the
-   `-input` argument of `MediaSDKTest`, in the aforementioned order. For
+   `-inputs` argument of `MediaSDKTest`, in the aforementioned order. For
    example,
 
    ```bash
@@ -99,18 +135,27 @@ If you are a Linux user, this utility can come in handy, because as of early
      -enable_directionlock -enable_flowstate -enable_denoise
    ```
 
+6. Clean up `datadir/`
+
+   After processing is complete and you have copied the files you need out of
+   `datadir/`, you can remove its contents from the repository root with:
+
+   ```bash
+   git clean -df datadir/
+   ```
+
 ## Utility: `join-insv`
 
 The utility `join-insv` is available in the container to automate the above
-workflow. Example
+workflow. Example:
 
 ```bash
 # For 4K and lower resolution
 join-insv --output /path/to/merged_360video.mp4 \
-  /path/to/input-1. insv /path/to/input-2.insv ...
+  /path/to/input-1.insv /path/to/input-2.insv ...
 
 # For 5.7K
-join-insv --output /path/to/merged_5.7k_360video.mp4 \
+join-insv --is_57k --output /path/to/merged_5.7k_360video.mp4 \
   /path/to/VID_20240528_113402_00_001.insv /path/to/VID_20240528_113402_10_001.insv \
   /path/to/VID_20240528_120003_00_002.insv /path/to/VID_20240528_120003_10_002.insv \
   ...
