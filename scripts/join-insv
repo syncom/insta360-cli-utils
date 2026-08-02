@@ -126,7 +126,7 @@ cli() {
       -h | --help) usage ; exit 0 ;;
       -o | --output) outfile="$2" ; shift 2 ;;
       --) shift; break ;;
-      *) >&2 echo "Unsupported optoin: $1"
+      *) >&2 echo "Unsupported option: $1"
          usage ; exit 1 ;;
     esac
   done
