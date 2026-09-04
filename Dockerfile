@@ -12,4 +12,10 @@ RUN apt update && \
     apt install exiftool ffmpeg bc -y
 RUN apt install "./${MEDIASDK_UBUNTU_DEB}" -y
 
+# Workaround for MediaSDK-3.1.5-linux-amd64
+RUN if [ "MediaSDK-3.1.5-linux-amd64.deb" = "${MEDIASDK_UBUNTU_DEB}" ]; then \
+      ln -sf /usr/lib/x86_64-linux-gnu/libtiff.so.6 /usr/lib/x86_64-linux-gnu/libtiff.so.5; \
+      ln -sf /opt/MediaSDK-3.1.5-linux/bin/MediaSDKTest /usr/bin/MediaSDKTest; \
+    fi
+
 COPY scripts scripts
