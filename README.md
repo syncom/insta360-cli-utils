@@ -167,6 +167,17 @@ The synopsis of `join-insv` is as follows.
 Usage: join-insv
     [ -H | --is_57k ]
     [ -o | --output outfile ]
+    [ -k | --keep-intermediate-files ]
     [ -h | --help ]
     <infile> [infiles]
 ```
+
+By default, `join-insv` deletes each intermediate file (the stitched
+per-segment `.mp4` files, the concat list, and `<outfile>_tmp_.mp4`) as soon
+as it is no longer needed, to save disk space. Pass `--keep-intermediate-files`
+to keep them. Input `.insv` files are never deleted.
+
+If a step fails before the final `.mp4` is written (for example, the disk runs
+out of space), `join-insv` exits with an error, deletes the partially written
+file from the failed step, and keeps (and lists) the intermediate files that
+were finished, so the slow stitching work is not lost.

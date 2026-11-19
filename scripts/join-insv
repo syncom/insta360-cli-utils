@@ -38,24 +38,80 @@ self_test() {
 
 }
 
+#######################################################
+# Intermediate file tracking and failure cleanup
+#
+# These are globals (not locals) because the EXIT trap runs outside the
+# scope of join_insv.
+#######################################################
+_keep_intermediate=false
+_in_progress=''        # file currently being written; partial on failure
+_file_list=''          # ffmpeg concat list
+_finished=()           # intermediate files that were completely written
+
+# Run on every exit. On failure, remove the partially written file of the
+# step that failed (it is corrupt and only takes up space), but keep the
+# intermediate files that were finished, because stitching them is slow.
+on_exit() {
+  local status=$?
+
+  if [ -n "${_file_list}" ] && ! ${_keep_intermediate}; then
+    rm -f "${_file_list}"
+  fi
+
+  if [ "${status}" -ne 0 ]; then
+    if [ -n "${_in_progress}" ]; then
+      echo "Error: failed while writing '${_in_progress}' (out of disk space?)." >&2
+      echo "Removing partially written file '${_in_progress}'." >&2
+      rm -f "${_in_progress}"
+    fi
+    local f remaining=()
+    for f in "${_finished[@]}"; do
+      [ -e "$f" ] && remaining+=("$f")
+    done
+    if [ "${#remaining[@]}" -gt 0 ]; then
+      echo "These finished intermediate files were kept; remove them manually if no longer needed:" >&2
+      printf '  %s\n' "${remaining[@]}" >&2
+    fi
+  fi
+}
+
+# stitch output input1 [input2]
+stitch() {
+  local output="$1"
+  shift
+
+  _in_progress="${output}"
+  MediaSDKTest -inputs "$@" -output "${output}" \
+    -enable_directionlock -enable_flowstate -enable_denoise
+  # MediaSDKTest may not exit non-zero on a write failure, so check the output
+  [ -s "${output}" ] || err "Error: MediaSDKTest did not produce '${output}'"
+  _in_progress=''
+  _finished+=("${output}")
+}
+
 join_insv() {
 
-  if [ "$#" -lt 3 ]; then
-    echo "Usage: ${FUNCNAME[0]} is_57k outfile infile1 [infile2 ...]"
+  if [ "$#" -lt 4 ]; then
+    echo "Usage: ${FUNCNAME[0]} is_57k keep_intermediate outfile infile1 [infile2 ...]"
     exit 1
   fi
 
   self_test
 
   local is_57k=$1
-  local outfile="$2"
-  shift 2
+  _keep_intermediate=$2
+  local outfile="$3"
+  shift 3
 
   local tmpfile="${outfile}"_tmp_.mp4
-  local file_list
-  file_list="$(mktemp --suffix="_list.txt" --tmpdir="$(pwd)")"
+  _file_list="$(mktemp --suffix="_list.txt" --tmpdir="$(pwd)")"
+  trap on_exit EXIT
 
-  rm -rf "${file_list}" "${tmpfile}"
+  rm -rf "${_file_list}" "${tmpfile}"
+
+  # Stitched per-segment files. Input files are never added here.
+  local segments=()
 
   if ${is_57k}; then
     if [ $(( $# % 2 )) -ne 0 ]; then
@@ -67,28 +123,38 @@ join_insv() {
       local right_eye="$2"
       shift 2
 
-      MediaSDKTest -inputs "$left_eye" "$right_eye" -output "${left_eye}.mp4" \
-        -enable_directionlock -enable_flowstate -enable_denoise
-      echo "file ${left_eye}.mp4" >> "${file_list}"
+      stitch "${left_eye}.mp4" "$left_eye" "$right_eye"
+      segments+=("${left_eye}.mp4")
+      echo "file ${left_eye}.mp4" >> "${_file_list}"
     done
   else
     for v in "$@"; do
-      MediaSDKTest -inputs "$v" -output "${v}.mp4" \
-        -enable_directionlock -enable_flowstate -enable_denoise
-      echo "file ${v}.mp4" >> "${file_list}"
+      stitch "${v}.mp4" "$v"
+      segments+=("${v}.mp4")
+      echo "file ${v}.mp4" >> "${_file_list}"
     done
   fi
 
+  _in_progress="${tmpfile}"
   ffmpeg -safe 0 \
     -f concat \
-    -i "${file_list}" \
+    -i "${_file_list}" \
     -vcodec copy \
     -acodec copy \
     -f mp4 "$tmpfile"
+  _in_progress=''
+  _finished+=("${tmpfile}")
+
+  # Segments are no longer needed once concatenated; free the space before
+  # exiftool makes another full-size copy.
+  if ! ${_keep_intermediate}; then
+    rm -f "${segments[@]}" "${_file_list}"
+  fi
 
   # Remove output file if it already exists, otherwise exiftool will fail
   rm -rf "${outfile}"
 
+  _in_progress="${outfile}"
   exiftool -XMP-GSpherical:Spherical="true" \
     -XMP-GSpherical:Stitched="true" \
     -XMP-GSpherical:ProjectionType="equirectangular" \
@@ -96,6 +162,11 @@ join_insv() {
     -api largefilesupport=1 \
     "$tmpfile" \
     -o "$outfile"
+  _in_progress=''
+
+  if ! ${_keep_intermediate}; then
+    rm -f "${tmpfile}"
+  fi
 }
 
 usage() {
@@ -103,8 +174,13 @@ usage() {
 Usage: ${0}
     [ -H | --is_57k ]
     [ -o | --output outfile ]
+    [ -k | --keep-intermediate-files ]
     [ -h | --help ]
     <infile> [infiles]
+
+By default, intermediate files are removed as soon as they are no longer
+needed. Use --keep-intermediate-files to keep them. Input files are never
+removed.
 EOF
 }
 
@@ -114,8 +190,9 @@ EOF
 cli() {
   local is_57k=false
   local outfile=''
+  local keep_intermediate=false
 
-  args=$(getopt -a -o Ho:h --long is_57k,output:,help -- "$@")
+  args=$(getopt -a -o Ho:kh --long is_57k,output:,keep-intermediate-files,help -- "$@")
 
   eval set -- "${args}"
 
@@ -125,6 +202,7 @@ cli() {
       -H | --is_57k) is_57k=true ; shift ;;
       -h | --help) usage ; exit 0 ;;
       -o | --output) outfile="$2" ; shift 2 ;;
+      -k | --keep-intermediate-files) keep_intermediate=true ; shift ;;
       --) shift; break ;;
       *) >&2 echo "Unsupported option: $1"
          usage ; exit 1 ;;
@@ -135,7 +213,7 @@ cli() {
 
   [[ $# -eq 0 ]] && { usage; exit 1; }
 
-  join_insv ${is_57k} "$outfile" "$@"
+  join_insv ${is_57k} ${keep_intermediate} "$outfile" "$@"
 
 }
 
